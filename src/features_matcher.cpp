@@ -1,7 +1,7 @@
 #include "features_matcher.h"
-
 #include <iostream>
 #include <map>
+
 
 FeatureMatcher::FeatureMatcher(cv::Mat intrinsics_matrix, cv::Mat dist_coeffs, double focal_scale)
 {
@@ -21,11 +21,11 @@ cv::Mat FeatureMatcher::readUndistortedImage(const std::string& filename )
 }
 
 void FeatureMatcher::extractFeatures()
-{
+{ 
+  const int maxFeatures= 35000;
   features_.resize(images_names_.size());
   descriptors_.resize(images_names_.size());
   feats_colors_.resize(images_names_.size());
-
   for( int i = 0; i < images_names_.size(); i++  )
   {
     std::cout<<"Computing descriptors for image "<<i<<std::endl;
@@ -37,11 +37,18 @@ void FeatureMatcher::extractFeatures()
     // Extract also the color (i.e., the cv::Vec3b information) of each feature, and store
     // it into feats_colors_[i] vector
     /////////////////////////////////////////////////////////////////////////////////////////
-
-
+    cv::Ptr<cv::ORB> orb = cv::ORB::create(maxFeatures);
     
-    
-    
+    orb->detectAndCompute(img,cv::noArray(),features_[i],descriptors_[i]);
+    //std::cout <<"Did the extraction" << std::endl;
+    //HERE I'M SAVING THE COLOR INFORMATION OF THE FEATURES
+    for(int k=0; k< features_[i].size();k++){
+        cv::KeyPoint kp = features_[i][k];
+        cv::Point2f pt = kp.pt;
+        int x = static_cast<int>(pt.x);
+        int y = static_cast<int>(pt.y);  
+        feats_colors_[i].push_back(img.at<cv::Vec3b>(y,x));
+    }
     /////////////////////////////////////////////////////////////////////////////////////////
   }
 }
