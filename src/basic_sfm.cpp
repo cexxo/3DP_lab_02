@@ -520,13 +520,23 @@ bool BasicSfM::incrementalReconstruction( int seed_pair_idx0, int seed_pair_idx1
   // IN case of "good" sideward motion, store the transformation into init_r_mat and  init_t_vec; defined above
   /////////////////////////////////////////////////////////////////////////////////////////
 
-  
-  
-  
-  
-  
-  
-
+  //Finding E and H
+  cv::Mat E=cv::findEssentialMat(points0,points1,intrinsics_matrix,cv::RANSAC,0.999,0.001,inlier_mask_E);
+  cv::Mat H=cv::findHomography(points0,points1,cv::RANSAC,0.001,inlier_mask_H);
+  //Check if inliers for model E is higher than the inliers of model H.
+  if(cv::countNonZero(inlier_mask_E)>cv::countNonZero(inlier_mask_H)){
+      cv::recoverPose(E,points0,points1,intrinsics_matrix,init_r_mat,init_t_vec,inlier_mask_E);//Save the rotation as a vector
+      //Check if it is mainly given by a sideward motion
+      /*if(abs(init_t_vec.at<double>(0))>=abs(init_t_vec.at<double>(2))){
+          //cv::Rodrigues(init_r_mat,init_r_vec);
+      }else{
+          return false;
+      }*/
+      if(abs(init_t_vec.at<double>(0))<abs(init_t_vec.at<double>(2)))
+          return false;
+  }else{
+      return false;
+  }
   /////////////////////////////////////////////////////////////////////////////////////////
 
   int ref_cam_pose_idx = seed_pair_idx0, new_cam_pose_idx = seed_pair_idx1;
@@ -712,11 +722,12 @@ bool BasicSfM::incrementalReconstruction( int seed_pair_idx0, int seed_pair_idx1
             // pt[2] = /*X coordinate of the estimated point */;
             /////////////////////////////////////////////////////////////////////////////////////////
 
-                
-                
+            //cv::triangulatePoints(proj_mat0,proj_mat1,points0,points1,hpoints4D);
+            //cv::Mat tPoints;
+              //cv::convertPointsFromHomogeneous(hpoints4D,tPoints); //To understand how the data are structured
+            //checkCheiralityConstraint();
 
-                
-                
+
             /////////////////////////////////////////////////////////////////////////////////////////
 
           }
