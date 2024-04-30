@@ -37,6 +37,8 @@ void FeatureMatcher::extractFeatures()
     // Extract also the color (i.e., the cv::Vec3b information) of each feature, and store
     // it into feats_colors_[i] vector
     /////////////////////////////////////////////////////////////////////////////////////////
+    //FRANCESCO CRISCI 2076739
+    ////////////////////////////////////////////////////////////////////////////////////////
     cv::Ptr<cv::ORB> orb = cv::ORB::create(maxFeatures);
     
     orb->detectAndCompute(img,cv::noArray(),features_[i],descriptors_[i]);
@@ -78,7 +80,8 @@ void FeatureMatcher::exhaustiveMatching()
       // setMatches( i, j, inlier_matches);
       /////////////////////////////////////////////////////////////////////////////////////////
 
-      
+      cv::BFMatcher	matcher(cv::NORM_L2);
+      matcher.match(descriptors_[i],descriptors_[j],matches);
       
       
       
