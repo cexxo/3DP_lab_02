@@ -79,12 +79,54 @@ void FeatureMatcher::exhaustiveMatching()
       // In case of success, set the matches with the function:
       // setMatches( i, j, inlier_matches);
       /////////////////////////////////////////////////////////////////////////////////////////
-
+      //FRANCESCO CRISCI 2076739
+      ////////////////////////////////////////////////////////////////////////////////////////
       cv::BFMatcher	matcher(cv::NORM_L2);
       matcher.match(descriptors_[i],descriptors_[j],matches);
-      
-      
-      
+
+      //Essential matrix CHATGPT HERE, GONNA SEE IF IT IS CORRECT
+      std::vector<cv::Point2f> matchedPts_i, matchedPts_j;
+      for (const auto& match : matches) {
+          matchedPts_i.push_back(features_[i][match.queryIdx].pt);
+          matchedPts_j.push_back(features_[j][match.trainIdx].pt);
+          //std::cout << "DEBUGGING BRUTTO " << features_[i][match.queryIdx].pt.x << std::endl;
+      }
+      cv::Mat essentialMatrix = cv::findEssentialMat(matchedPts_i,matchedPts_j,new_intrinsics_matrix_,cv::RANSAC,0.99,1.0);
+      //HERE I CHECK IF I CAN FIND INLIERS
+      cv::Mat R,t;
+      std::vector<uchar> inliers(matchedPts_i.size(),0);
+      double distanceThreshold = 1.0;
+      int numInliers = cv::recoverPose(essentialMatrix, matchedPts_i, matchedPts_j, new_intrinsics_matrix_, R,t, distanceThreshold, inliers);
+      for(int k = 0; k<inliers.size();k++){
+        if(inliers[k]){
+          inlier_matches.push_back(matches[k]);
+        }
+      }
+      if(numInliers <=5)
+        inlier_matches.clear();
+      /*else{
+        setMatches(i,j,inlier_matches);
+        inlier_matches.clear();
+      }*/
+      cv::Mat homographyMatrix = cv::findHomography(matchedPts_i, matchedPts_j, cv::RANSAC, 1.0);
+
+      // Find inliers for Homography matrix
+      cv::perspectiveTransform(matchedPts_i, matchedPts_j, homographyMatrix);
+      double inlierThreshold = 1.0;
+      for (int k = 0; k < matchedPts_j.size(); ++k) {
+          double error = cv::norm(matchedPts_j[k] - matchedPts_j[k]);
+          if (error < inlierThreshold) {
+             inlier_matches.push_back(matches[k]);
+          }
+      }
+
+      // Check if the number of inlier matches is sufficient
+      if (inlier_matches.size() <= 5) {
+          inlier_matches.clear(); // Discard inlier matches if the number is too small
+      }
+      else{
+        setMatches(i,j,inlier_matches);
+      }
 
       /////////////////////////////////////////////////////////////////////////////////////////
 
