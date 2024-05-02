@@ -1,0 +1,39 @@
+/home/lorenzo/Scrivania/CLion-2023.3.4/clion-2023.3.4/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/lorenzo/Scrivania/CLion-2023.3.4/clion-2023.3.4/bin/ninja/linux/x64/ninja -G Ninja -S /home/lorenzo/Scrivania/3DP_lab_02 -B /home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug
+CMake Warning (dev) at CMakeLists.txt:1 (project):
+  cmake_minimum_required() should be called prior to this top-level project()
+  call.  Please see the cmake-commands(7) manual for usage documentation of
+  both commands.
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- The C compiler identification is GNU 9.4.0
+-- The CXX compiler identification is GNU 9.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+CMake Deprecation Warning at CMakeLists.txt:3 (cmake_minimum_required):
+  Compatibility with CMake < 3.5 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Found Boost: /usr/lib/x86_64-linux-gnu/cmake/Boost-1.71.0/BoostConfig.cmake (found version "1.71.0") found components: filesystem 
+-- Found OpenCV: /usr (found version "4.2.0") 
+-- Found installed version of Eigen: /usr/lib/cmake/eigen3
+-- Found required Ceres dependency: Eigen version 3.3.7 in /usr/include/eigen3
+-- Found required Ceres dependency: glog
+-- Found installed version of gflags: /usr/lib/x86_64-linux-gnu/cmake/gflags
+-- Detected gflags version: 2.2.2
+-- Found required Ceres dependency: gflags
+-- Found Ceres version: 1.14.0 installed in: /usr with components: [EigenSparse, SparseLinearAlgebraLibrary, LAPACK, SuiteSparse, CXSparse, SchurSpecializations, OpenMP, Multithreading]
+-- Configuring done (4.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug
