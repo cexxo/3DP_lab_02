@@ -40,32 +40,31 @@ struct ReprojectionError {
         // Compute the center of distortion. The sign change comes from
         // the camera model that Noah Snavely's Bundler assumes, whereby
         // the camera coordinate system has a negative z axis.
-        //T xp = -p[0] / p[2];
-        //T yp = -p[1] / p[2];
+        T xp = -p[0] / p[2];
+        T yp = -p[1] / p[2];
 
         // Apply second and fourth order radial distortion.
         //const T &l1 = camera[7];
         //const T &l2 = camera[8];
         //T r2 = xp * xp + yp * yp;
-        //T distortion = 1.0 + r2 * (l1 + l2 * r2);
+        //T distortion = 1.0 + r2 * (r2);
 
         // Compute final projected point position.
         //const T &focal = camera[6];
-        //T predicted_x = focal * distortion * xp;
-        //T predicted_y = focal * distortion * yp;
+        T predicted_x = xp;
+        T predicted_y = yp;
 
 
         // The error is the difference between the predicted and observed position.
-        residuals[0] = - T(observed_x);
-        residuals[1] = - T(observed_y);
+        residuals[0] = predicted_x - T(observed_x);
+        residuals[1] = predicted_y - T(observed_y);
         return true;
     }
 
-//    static ceres::CostFunction *Create(const double observed_x,
-//                                       const double observed_y) {
-//        return new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 3>(
-//                observed_x, observed_y);
-//    }
+    static ceres::CostFunction *Create(const double observed_x, const double observed_y) {
+        return new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 3>(
+                new ReprojectionError(observed_x, observed_y));
+    }
 
     double observed_x;
     double observed_y;
@@ -690,10 +689,43 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
                         // pt[2] = /*X coordinate of the estimated point */;
                         /////////////////////////////////////////////////////////////////////////////////////////
 
-                        //cv::triangulatePoints(proj_mat0,proj_mat1,points0,points1,hpoints4D);
-                        //cv::Mat tPoints;
-                        //cv::convertPointsFromHomogeneous(hpoints4D,tPoints); //To understand how the data are structured
-                        //checkCheiralityConstraint();
+                        //Constructing the projection matrices for cam0 and cam1
+                        cv::Vec3d r_vec0(cam0_data[0], cam0_data[1], cam0_data[2]);
+                        cv::Mat r_mat0;
+                        cv::Rodrigues(r_vec0, r_mat0);
+                        r_mat0.copyTo(proj_mat0(cv::Rect(0, 0, 3, 3)));
+                        proj_mat0.at<double>(0, 4) = cam0_data[3];
+                        proj_mat0.at<double>(1, 4) = cam0_data[4];
+                        proj_mat0.at<double>(2, 4) = cam0_data[5];
+
+                        cv::Vec3d r_vec1(cam1_data[0], cam1_data[1], cam1_data[2]);
+                        cv::Mat r_mat1;
+                        cv::Rodrigues(r_vec1, r_mat1);
+                        r_mat1.copyTo(proj_mat1(cv::Rect(0, 0, 3, 3)));
+                        proj_mat1.at<double>(0, 4) = cam1_data[3];
+                        proj_mat1.at<double>(1, 4) = cam1_data[4];
+                        proj_mat1.at<double>(2, 4) = cam1_data[5];
+
+                        //points0.emplace_back(observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2],observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2+1]);
+                        //points1.emplace_back(observations_[cam_observation_[cam_idx][pt_idx]*2],observations_[cam_observation_[cam_idx][pt_idx]*2+1]);
+                        points0[0] = cv::Point2d(observations_[cam_observation_[new_cam_pose_idx][pt_idx] * 2],
+                                                 observations_[cam_observation_[new_cam_pose_idx][pt_idx] * 2 + 1]);
+                        points1[0] = cv::Point2d(observations_[cam_observation_[cam_idx][pt_idx] * 2],
+                                                 observations_[cam_observation_[cam_idx][pt_idx] * 2 + 1]);
+
+                        //Triangulation of the point
+                        cv::triangulatePoints(proj_mat0, proj_mat1, points0, points1, hpoints4D);
+
+                        //Check CheiralityContraint
+                        if (checkCheiralityConstraint(new_cam_pose_idx, pt_idx) &&
+                            checkCheiralityConstraint(cam_idx, pt_idx)) {
+                            n_new_pts++;
+                            pts_optim_iter_[pt_idx] = 1;
+                            double *pt = pointBlockPtr(pt_idx);
+                            pt[0] = hpoints4D.at<double>(0) / hpoints4D.at<double>(3);
+                            pt[1] = hpoints4D.at<double>(1) / hpoints4D.at<double>(3);
+                            pt[2] = hpoints4D.at<double>(2) / hpoints4D.at<double>(3);
+                        }
 
 
                         /////////////////////////////////////////////////////////////////////////////////////////
@@ -753,6 +785,9 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
         //  if( <bad reconstruction> )
         //    return false;
 
+
+
+
         /////////////////////////////////////////////////////////////////////////////////////////
     }
 
@@ -802,17 +837,17 @@ void BasicSfM::bundleAdjustmentIter(int new_cam_idx) {
                 // while the point position blocks have size (point_block_size_) of 3 elements.
                 /////////////////////////////////////////////////////////////////////////////////////////
 
-                ceres::CauchyLoss* loss = new ceres::CauchyLoss(2 * max_reproj_err_);
-                ceres::CostFunction *cost_function =
-                        new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 3>(
-                                new ReprojectionError(
-                                        observations_[2 * i_obs + 0],
-                                        observations_[2 * i_obs + 1]));
-
-                problem.AddResidualBlock(cost_function,
-                                         loss,
-                                         parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_),
-                                         (parameters_.data() + (camera_block_size_ * num_cam_poses_)) + (point_index_[i_obs] * point_block_size_));
+                ceres::CauchyLoss *loss = new ceres::CauchyLoss(2 * max_reproj_err_);
+//                ceres::CostFunction *cost_function =
+//                        new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 3>(
+//                                new ReprojectionError(
+//                                        observations_[2 * i_obs + 0],
+//                                        observations_[2 * i_obs + 1]));
+//
+//                problem.AddResidualBlock(cost_function,
+//                                         loss,
+//                                         parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_),
+//                                         (parameters_.data() + (camera_block_size_ * num_cam_poses_)) + (point_index_[i_obs] * point_block_size_));
 
 
 //                double* mutable_cameras() { return parameters_; }
@@ -825,12 +860,13 @@ void BasicSfM::bundleAdjustmentIter(int new_cam_idx) {
 //                    return mutable_points() + point_index_[i] * 3;
 //                }
 
-//                ceres::CostFunction *cost_function = ReprojectionError::Create(
-//                        observations_[2 * i_obs + 0], observations_[2 * i_obs + 1]);
-//                problem.AddResidualBlock(cost_function,
-//                                         &loss,
-//                                         parameters_.data() + (cam_pose_index_[i_obs] * 6),
-//                                         (parameters_.data() + 6 * num_cam_poses_) + (point_index_[i_obs] * 3));
+                ceres::CostFunction *cost_function = ReprojectionError::Create(
+                        observations_[2 * i_obs + 0], observations_[2 * i_obs + 1]);
+                problem.AddResidualBlock(cost_function,
+                                         loss,
+                                         parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_),
+                                         (parameters_.data() + camera_block_size_ * num_cam_poses_) +
+                                         (point_index_[i_obs] * point_block_size_));
 
 
                 /////////////////////////////////////////////////////////////////////////////////////////
