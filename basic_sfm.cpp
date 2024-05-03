@@ -690,40 +690,12 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
                         // pt[2] = /*X coordinate of the estimated point */;
                         /////////////////////////////////////////////////////////////////////////////////////////
 
-                        //Constructing the projection matrices for cam0 and cam1
-                        cv::Vec3d r_vec0(cam0_data[0],cam0_data[1],cam0_data[2]);
-                        cv::Mat r_mat0;
-                        cv::Rodrigues(r_vec0,r_mat0);
-                        r_mat0.copyTo(proj_mat0(cv::Rect(0,0,3,3)));
-                        proj_mat0.at<double>(0,4)=cam0_data[3];
-                        proj_mat0.at<double>(1,4)=cam0_data[4];
-                        proj_mat0.at<double>(2,4)=cam0_data[5];
+                        //cv::triangulatePoints(proj_mat0,proj_mat1,points0,points1,hpoints4D);
+                        //cv::Mat tPoints;
+                        //cv::convertPointsFromHomogeneous(hpoints4D,tPoints); //To understand how the data are structured
+                        //checkCheiralityConstraint();
 
-                        cv::Vec3d r_vec1(cam1_data[0],cam1_data[1],cam1_data[2]);
-                        cv::Mat r_mat1;
-                        cv::Rodrigues(r_vec1,r_mat1);
-                        r_mat1.copyTo(proj_mat1(cv::Rect(0,0,3,3)));
-                        proj_mat1.at<double>(0,4)=cam1_data[3];
-                        proj_mat1.at<double>(1,4)=cam1_data[4];
-                        proj_mat1.at<double>(2,4)=cam1_data[5];
 
-                        //points0.emplace_back(observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2],observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2+1]);
-                        //points1.emplace_back(observations_[cam_observation_[cam_idx][pt_idx]*2],observations_[cam_observation_[cam_idx][pt_idx]*2+1]);
-                        points0[0]=cv::Point2d(observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2],observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2+1]);
-                        points1[0]=cv::Point2d(observations_[cam_observation_[cam_idx][pt_idx]*2],observations_[cam_observation_[cam_idx][pt_idx]*2+1]);
-
-                        //Triangulation of the point
-                        cv::triangulatePoints(proj_mat0,proj_mat1,points0,points1,hpoints4D);
-
-                        //Check CheiralityContraint
-                        if(checkCheiralityConstraint(new_cam_pose_idx,pt_idx) && checkCheiralityConstraint(cam_idx,pt_idx)){
-                            n_new_pts++;
-                            pts_optim_iter_[pt_idx] = 1;
-                            double *pt = pointBlockPtr(pt_idx);
-                            pt[0] = hpoints4D.at<double>(0)/hpoints4D.at<double>(3);
-                            pt[1] = hpoints4D.at<double>(1)/hpoints4D.at<double>(3);
-                            pt[2] = hpoints4D.at<double>(2)/hpoints4D.at<double>(3);
-                        }
                         /////////////////////////////////////////////////////////////////////////////////////////
 
                     }
