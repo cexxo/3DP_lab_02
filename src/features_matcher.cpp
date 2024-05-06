@@ -81,6 +81,7 @@ void FeatureMatcher::exhaustiveMatching()
       /////////////////////////////////////////////////////////////////////////////////////////
       //FRANCESCO CRISCI 2076739
       ////////////////////////////////////////////////////////////////////////////////////////
+      std::vector<cv::DMatch> temp_in;
       cv::BFMatcher	matcher(cv::NORM_L2);
       matcher.match(descriptors_[i],descriptors_[j],matches);
       cv::Mat E, H, R, t;
@@ -95,17 +96,11 @@ void FeatureMatcher::exhaustiveMatching()
       int n_inliers = cv::recoverPose(E,match_i,match_j,new_intrinsics_matrix_,R,t,threshold,inliers);
       for(int k = 0; k<matches.size()-1;k++){
         if(matches[k].distance < threshold*matches[k+1].distance){
-          inlier_matches.push_back(matches[k]);
+          temp_in.push_back(matches[k]);
         }
       }
-      std::cout << "size 1: " << n_inliers << " inliers matches " << inlier_matches.size() << std::endl;
       if(inliers.size()<5){
-        inlier_matches.clear();
-      }else{
-        setMatches(i,j,inlier_matches);
-        std::cout<<"continue " << i << " " << j << std::endl;
-        inlier_matches.clear();
-        continue;
+        temp_in.clear();
       }
       H = cv::findHomography(match_i, match_j, cv::RANSAC, 1.0);
       cv::perspectiveTransform(match_i, match_j, H);
@@ -115,13 +110,21 @@ void FeatureMatcher::exhaustiveMatching()
              inlier_matches.push_back(matches[k]);
           }
       }
-      std::cout << "size 2: " << inlier_matches.size() << std::endl;
       if (inlier_matches.size() < 5) {
           inlier_matches.clear();
+      }
+      if(temp_in.size()==0){std::cout<<" Something went wrong" << std::endl;}
+      if(temp_in.size()>=inlier_matches.size()){
+        setMatches(i,j,temp_in);
+        inlier_matches.clear();
+        temp_in.clear();
+        std::cout << "I used Essential" << std::endl;
+        continue;
       }else{
         setMatches(i,j,inlier_matches);
-        std::cout<<"continue " << i << " " << j << std::endl;
         inlier_matches.clear();
+        temp_in.clear();
+        std::cout << "I used Homography" << std::endl;
         continue;
       }
       //Essential matrix CHATGPT HERE, GONNA SEE IF IT IS CORRECT
