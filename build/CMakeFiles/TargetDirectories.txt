@@ -1,5 +1,0 @@
-/home/cexxo/3DP_lab_02/build/CMakeFiles/rebuild_cache.dir
-/home/cexxo/3DP_lab_02/build/CMakeFiles/edit_cache.dir
-/home/cexxo/3DP_lab_02/build/CMakeFiles/basic_sfm.dir
-/home/cexxo/3DP_lab_02/build/CMakeFiles/matcher.dir
-/home/cexxo/3DP_lab_02/build/CMakeFiles/sfm.dir
