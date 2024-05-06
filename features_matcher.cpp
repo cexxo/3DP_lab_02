@@ -91,29 +91,36 @@ void FeatureMatcher::exhaustiveMatching()
           match_j.push_back(features_[j][match.trainIdx].pt);
       }
       E = cv::findEssentialMat(match_i,match_j, new_intrinsics_matrix_,cv::RANSAC,0.99,1.0);
-      std::vector<uchar> inliers(match_i.size(),0);
+      std::vector<uchar> inliers;
       double threshold = 1.0;
       int n_inliers = cv::recoverPose(E,match_i,match_j,new_intrinsics_matrix_,R,t,threshold,inliers);
-      for(int k = 0; k<matches.size()-1;k++){
+      //std::cout<<n_inliers<< " " << inliers.size()<<std::endl;
+      /*for(int k = 0; k<matches.size()-1;k++){
         if(matches[k].distance < threshold*matches[k+1].distance){
           temp_in.push_back(matches[k]);
         }
+      }*/
+      //TO CHECK WHICH ONE IS BETTER(THE SECOND ONE SI MORE CORRECT TECNICALLY)
+      for (int k = 0; k < inliers.size(); ++k) {
+        if (inliers[k]) {
+            temp_in.push_back(matches[k]);
+        }
       }
-      if(inliers.size()<5){
+      if(temp_in.size()<5){
         temp_in.clear();
       }
       H = cv::findHomography(match_i, match_j, cv::RANSAC, 1.0);
+      double threshold2 = 30;//To be defined
       cv::perspectiveTransform(match_i, match_j, H);
       for (int k = 0; k < match_j.size(); ++k) {
           double e = cv::norm(match_i[k] - match_j[k]);
-          if (e < threshold) {
+          if (e < threshold2) {
              inlier_matches.push_back(matches[k]);
           }
       }
       if (inlier_matches.size() < 5) {
           inlier_matches.clear();
       }
-      if(temp_in.size()==0){std::cout<<" Something went wrong" << std::endl;}
       if(temp_in.size()>=inlier_matches.size()){
         setMatches(i,j,temp_in);
         inlier_matches.clear();
@@ -127,43 +134,7 @@ void FeatureMatcher::exhaustiveMatching()
         std::cout << "I used Homography" << std::endl;
         continue;
       }
-      //Essential matrix CHATGPT HERE, GONNA SEE IF IT IS CORRECT
-      /*std::vector<cv::Point2f> matchedPts_i, matchedPts_j;
-      for (const auto& match : matches) {
-          matchedPts_i.push_back(features_[i][match.queryIdx].pt);
-          matchedPts_j.push_back(features_[j][match.trainIdx].pt);
-      }
-      cv::Mat essentialMatrix = cv::findEssentialMat(matchedPts_i,matchedPts_j,new_intrinsics_matrix_,cv::RANSAC,0.99,1.0);
-      //HERE I CHECK IF I CAN FIND INLIERS
-      cv::Mat R,t;
-      std::vector<uchar> inliers(matchedPts_i.size(),0);
-      double distanceThreshold = 1.0;
-      int numInliers = cv::recoverPose(essentialMatrix, matchedPts_i, matchedPts_j, new_intrinsics_matrix_, R,t, distanceThreshold, inliers);
-      for(int k = 0; k<inliers.size();k++){
-        if(inliers[k]){
-          inlier_matches.push_back(matches[k]);
-        }
-      }
-      if(numInliers <=5)
-        inlier_matches.clear();
-      cv::Mat homographyMatrix = cv::findHomography(matchedPts_i, matchedPts_j, cv::RANSAC, 1.0);
-      // Find inliers for Homography matrix
-      cv::perspectiveTransform(matchedPts_i, matchedPts_j, homographyMatrix);
-      double inlierThreshold = 1.0;
-      for (int k = 0; k < matchedPts_j.size(); ++k) {
-          double error = cv::norm(matchedPts_j[k] - matchedPts_j[k]);
-          if (error < inlierThreshold) {
-             inlier_matches.push_back(matches[k]);
-          }
-      }
-      // Check if the number of inlier matches is sufficient
-      if (inlier_matches.size() <= 5) {
-          inlier_matches.clear(); // Discard inlier matches if the number is too small
-      }
-      else{
-        setMatches(i,j,inlier_matches);
-      }*/
-
+      if(temp_in.size()==0 && inlier_matches.size()==0){std::cout<<" Something went wrong" << std::endl;}
       /////////////////////////////////////////////////////////////////////////////////////////
 
     }
