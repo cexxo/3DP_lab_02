@@ -833,7 +833,7 @@ void BasicSfM::bundleAdjustmentIter(int new_cam_idx) {
 
                 // Creating variables for better understanding
                 double* cameras = parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_);
-                double* points = parameters_.data() + camera_block_size_ * num_cam_poses_) + (point_index_[i_obs] * point_block_size_);
+                double* points = parameters_.data() + (camera_block_size_ * num_cam_poses_) + (point_index_[i_obs] * point_block_size_);
 
                 // Initialization of cost function
                 ceres::CostFunction *cost_function = ReprojectionError::Create(
