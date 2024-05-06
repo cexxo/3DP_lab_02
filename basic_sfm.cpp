@@ -21,6 +21,8 @@ struct ReprojectionError {
     // WARNING: When dealing with the AutoDiffCostFunction template parameters,
     // pay attention to the order of the template parameters
     //////////////////////////////////////////////////////////////////////////////////////////
+    // LORENZO LAMBERTINI 2104288
+    //////////////////////////////////////////////////////////////////////////////////////////
     ReprojectionError(double observed_x, double observed_y)
             : observed_x(observed_x), observed_y(observed_y) {}
 
@@ -29,31 +31,18 @@ struct ReprojectionError {
                     const T *const point,
                     T *residuals) const {
 
-        // camera[0,1,2] are the angle-axis rotation.
+        // The elements camera[0,1,2] are the angle-axis rotation.
         T p[3];
         ceres::AngleAxisRotatePoint(camera, point, p);
-        // camera[3,4,5] are the translation.
+
+        // The elements camera[3,4,5] are the translation.
         p[0] += camera[3];
         p[1] += camera[4];
         p[2] += camera[5];
 
-        // Compute the center of distortion. The sign change comes from
-        // the camera model that Noah Snavely's Bundler assumes, whereby
-        // the camera coordinate system has a negative z axis.
-        T xp = -p[0] / p[2];
-        T yp = -p[1] / p[2];
-
-        // Apply second and fourth order radial distortion.
-        //const T &l1 = camera[7];
-        //const T &l2 = camera[8];
-        //T r2 = xp * xp + yp * yp;
-        //T distortion = 1.0 + r2 * (r2);
-
-        // Compute final projected point position.
-        //const T &focal = camera[6];
-        T predicted_x = xp;
-        T predicted_y = yp;
-
+        // Computing the center;
+        T predicted_x = -p[0] / p[2];
+        T predicted_y = -p[1] / p[2];
 
         // The error is the difference between the predicted and observed position.
         residuals[0] = predicted_x - T(observed_x);
@@ -836,38 +825,22 @@ void BasicSfM::bundleAdjustmentIter(int new_cam_idx) {
                 // The camera position blocks have size (camera_block_size_) of 6 elements,
                 // while the point position blocks have size (point_block_size_) of 3 elements.
                 /////////////////////////////////////////////////////////////////////////////////////////
+                // LORENZO LAMBERTINI 2104288
+                //////////////////////////////////////////////////////////////////////////////////////////
 
+                // Initialization of loss function
                 ceres::CauchyLoss *loss = new ceres::CauchyLoss(2 * max_reproj_err_);
-//                ceres::CostFunction *cost_function =
-//                        new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6, 3>(
-//                                new ReprojectionError(
-//                                        observations_[2 * i_obs + 0],
-//                                        observations_[2 * i_obs + 1]));
-//
-//                problem.AddResidualBlock(cost_function,
-//                                         loss,
-//                                         parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_),
-//                                         (parameters_.data() + (camera_block_size_ * num_cam_poses_)) + (point_index_[i_obs] * point_block_size_));
 
+                // Creating variables for better understanding
+                double* cameras = parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_);
+                double* points = parameters_.data() + camera_block_size_ * num_cam_poses_) + (point_index_[i_obs] * point_block_size_);
 
-//                double* mutable_cameras() { return parameters_; }
-//                double* mutable_points() { return parameters_ + 9 * num_cameras_; }
-//
-//                double* mutable_camera_for_observation(int i) {
-//                    return mutable_cameras() + camera_index_[i] * 9;
-//                }
-//                double* mutable_point_for_observation(int i) {
-//                    return mutable_points() + point_index_[i] * 3;
-//                }
-
+                // Initialization of cost function
                 ceres::CostFunction *cost_function = ReprojectionError::Create(
                         observations_[2 * i_obs + 0], observations_[2 * i_obs + 1]);
-                problem.AddResidualBlock(cost_function,
-                                         loss,
-                                         parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_),
-                                         (parameters_.data() + camera_block_size_ * num_cam_poses_) +
-                                         (point_index_[i_obs] * point_block_size_));
 
+                // Adding residual block
+                problem.AddResidualBlock(cost_function, loss, cameras, points ) ;
 
                 /////////////////////////////////////////////////////////////////////////////////////////
 
