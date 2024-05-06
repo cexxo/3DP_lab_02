@@ -1,5 +1,0 @@
-/home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug/CMakeFiles/sfm.dir
-/home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug/CMakeFiles/matcher.dir
-/home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug/CMakeFiles/basic_sfm.dir
-/home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/lorenzo/Scrivania/3DP_lab_02/cmake-build-debug/CMakeFiles/rebuild_cache.dir
