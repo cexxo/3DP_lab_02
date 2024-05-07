@@ -21,8 +21,6 @@ struct ReprojectionError {
     // WARNING: When dealing with the AutoDiffCostFunction template parameters,
     // pay attention to the order of the template parameters
     //////////////////////////////////////////////////////////////////////////////////////////
-    // LORENZO LAMBERTINI 2104288
-    //////////////////////////////////////////////////////////////////////////////////////////
     ReprojectionError(double observed_x, double observed_y)
             : observed_x(observed_x), observed_y(observed_y) {}
 
@@ -41,8 +39,8 @@ struct ReprojectionError {
         p[2] += camera[5];
 
         // Computing the center;
-        T predicted_x = -p[0] / p[2];
-        T predicted_y = -p[1] / p[2];
+        T predicted_x = p[0] / p[2];
+        T predicted_y = p[1] / p[2];
 
         // The error is the difference between the predicted and observed position.
         residuals[0] = predicted_x - T(observed_x);
@@ -483,22 +481,21 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
     // Otherwise, return false (we will try a new seed pair)
     // IN case of "good" sideward motion, store the transformation into init_r_mat and  init_t_vec; defined above
     /////////////////////////////////////////////////////////////////////////////////////////
+    // LORENZO GIANNINI 2091019
+    /////////////////////////////////////////////////////////////////////////////////////////
 
     //Finding E and H
     cv::Mat E = cv::findEssentialMat(points0, points1, intrinsics_matrix, cv::RANSAC, 0.999, 0.001, inlier_mask_E);
     cv::Mat H = cv::findHomography(points0, points1, cv::RANSAC, 0.001, inlier_mask_H);
+    //cv::Mat H = cv::findHomography(points0, points1, inlier_mask_H, cv::RANSAC, 0.01);
+
     //Check if inliers for model E is higher than the inliers of model H.
     if (cv::countNonZero(inlier_mask_E) > cv::countNonZero(inlier_mask_H)) {
         cv::recoverPose(E, points0, points1, intrinsics_matrix, init_r_mat, init_t_vec,
-                        inlier_mask_E);//Save the rotation as a vector
-        //Check if it is mainly given by a sideward motion
-        /*if(abs(init_t_vec.at<double>(0))>=abs(init_t_vec.at<double>(2))){
-            //cv::Rodrigues(init_r_mat,init_r_vec);
-        }else{
+                        inlier_mask_E);
+        if (abs(init_t_vec.at<double>(0)) < abs(init_t_vec.at<double>(2))) {
             return false;
-        }*/
-        if (abs(init_t_vec.at<double>(0)) < abs(init_t_vec.at<double>(2)))
-            return false;
+        }
     } else {
         return false;
     }
@@ -586,28 +583,9 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
         std::vector<int> n_init_pts(num_cam_poses_, 0);
         int max_init_pts = -1;
 
-//        // Basic next best view selection strategy.
-//        // Select the new camera (new_cam_pose_idx) to be included in the optimization as the one that has
-//        // more projected points in common with the cameras already included in the optimization
-//        for (int i_p = 0; i_p < num_points_; i_p++) {
-//            if (pts_optim_iter_[i_p] > 0) // Point already added
-//            {
-//                for (int i_c = 0; i_c < num_cam_poses_; i_c++) {
-//                    if (cam_pose_optim_iter_[i_c] == 0 && // New camera pose not yet registered
-//                        cam_observation_[i_c].find(i_p) !=
-//                        cam_observation_[i_c].end()) // Dees camera i_c see this 3D point?
-//                        n_init_pts[i_c]++;
-//                }
-//            }
-//        }
-//
-//        for (int i_c = 0; i_c < num_cam_poses_; i_c++) {
-//            if (cam_pose_optim_iter_[i_c] == 0 && n_init_pts[i_c] > max_init_pts) {
-//                max_init_pts = n_init_pts[i_c];
-//                new_cam_pose_idx = i_c;
-//            }
-//        }
-
+        // Basic next best view selection strategy.
+        // Select the new camera (new_cam_pose_idx) to be included in the optimization as the one that has
+        // more projected points in common with the cameras already included in the optimization
         for (int i_p = 0; i_p < num_points_; i_p++) {
             if (pts_optim_iter_[i_p] > 0) // Point already added
             {
@@ -627,18 +605,11 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
             }
         }
 
-
-
-
-
         //////////////////////////// Code to be completed (OPTIONAL) ////////////////////////////////
         // Implement an alternative next best view selection strategy, e.g., the one presented
         // in class(see Structure From Motion Revisited paper, sec. 4.2). Just comment the basic next
         // best view selection strategy implemented above and replace it with yours.
-        /////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
+        /////////////////////////////////////////////////////////////////////////////////////////
 
 
         // Now new_cam_pose_idx is the index of the next camera pose to be registered
@@ -646,14 +617,21 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
         std::vector<cv::Point3d> scene_pts;
         std::vector<cv::Point2d> img_pts;
         for (int i_p = 0; i_p < num_points_; i_p++) {
+            //cout<<pts_optim_iter_[i_p]<<"\n";
             if (pts_optim_iter_[i_p] > 0 &&
                 cam_observation_[new_cam_pose_idx].find(i_p) != cam_observation_[new_cam_pose_idx].end()) {
+                cout<<"Dentro l'if\n";
+                int ao;
+                //cin>>ao;
                 double *pt = pointBlockPtr(i_p);
                 scene_pts.emplace_back(pt[0], pt[1], pt[2]);
                 img_pts.emplace_back(observations_[cam_observation_[new_cam_pose_idx][i_p] * 2],
                                      observations_[cam_observation_[new_cam_pose_idx][i_p] * 2 + 1]);
             }
         }
+        cout<<"Fuori dal for\n";
+        int pino;
+        //cin>>pino;
         if (scene_pts.size() <= 3) {
             std::cout << "No other positions can be optimized, exiting" << std::endl;
             return false;
@@ -697,46 +675,46 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
                         // pt[1] = /*X coordinate of the estimated point */;
                         // pt[2] = /*X coordinate of the estimated point */;
                         /////////////////////////////////////////////////////////////////////////////////////////
+                        // LORENZO GIANNINI 2091019
+                        /////////////////////////////////////////////////////////////////////////////////////////
 
                         //Constructing the projection matrices for cam0 and cam1
-                        cv::Vec3d r_vec0(cam0_data[0], cam0_data[1], cam0_data[2]);
+                        cout<<"ENTRO IN 4\n";
+                        int ao;
+                        //cin>>ao;
+                        cv::Vec3d r_vec0(cam0_data[0],cam0_data[1],cam0_data[2]);
                         cv::Mat r_mat0;
-                        cv::Rodrigues(r_vec0, r_mat0);
-                        r_mat0.copyTo(proj_mat0(cv::Rect(0, 0, 3, 3)));
-                        proj_mat0.at<double>(0, 4) = cam0_data[3];
-                        proj_mat0.at<double>(1, 4) = cam0_data[4];
-                        proj_mat0.at<double>(2, 4) = cam0_data[5];
+                        cv::Rodrigues(r_vec0,r_mat0);
+                        r_mat0.copyTo(proj_mat0(cv::Rect(0,0,3,3)));
+                        proj_mat0.at<double>(0,3)=cam0_data[3];
+                        proj_mat0.at<double>(1,3)=cam0_data[4];
+                        proj_mat0.at<double>(2,3)=cam0_data[5];
 
-                        cv::Vec3d r_vec1(cam1_data[0], cam1_data[1], cam1_data[2]);
+                        cv::Vec3d r_vec1(cam1_data[0],cam1_data[1],cam1_data[2]);
                         cv::Mat r_mat1;
-                        cv::Rodrigues(r_vec1, r_mat1);
-                        r_mat1.copyTo(proj_mat1(cv::Rect(0, 0, 3, 3)));
-                        proj_mat1.at<double>(0, 4) = cam1_data[3];
-                        proj_mat1.at<double>(1, 4) = cam1_data[4];
-                        proj_mat1.at<double>(2, 4) = cam1_data[5];
+                        cv::Rodrigues(r_vec1,r_mat1);
+                        r_mat1.copyTo(proj_mat1(cv::Rect(0,0,3,3)));
+                        proj_mat1.at<double>(0,3)=cam1_data[3];
+                        proj_mat1.at<double>(1,3)=cam1_data[4];
+                        proj_mat1.at<double>(2,3)=cam1_data[5];
 
                         //points0.emplace_back(observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2],observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2+1]);
                         //points1.emplace_back(observations_[cam_observation_[cam_idx][pt_idx]*2],observations_[cam_observation_[cam_idx][pt_idx]*2+1]);
-                        points0[0] = cv::Point2d(observations_[cam_observation_[new_cam_pose_idx][pt_idx] * 2],
-                                                 observations_[cam_observation_[new_cam_pose_idx][pt_idx] * 2 + 1]);
-                        points1[0] = cv::Point2d(observations_[cam_observation_[cam_idx][pt_idx] * 2],
-                                                 observations_[cam_observation_[cam_idx][pt_idx] * 2 + 1]);
+                        points0[0]=cv::Point2d(observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2],observations_[cam_observation_[new_cam_pose_idx][pt_idx]*2+1]);
+                        points1[0]=cv::Point2d(observations_[cam_observation_[cam_idx][pt_idx]*2],observations_[cam_observation_[cam_idx][pt_idx]*2+1]);
 
                         //Triangulation of the point
-                        cv::triangulatePoints(proj_mat0, proj_mat1, points0, points1, hpoints4D);
+                        cv::triangulatePoints(proj_mat0,proj_mat1,points0,points1,hpoints4D);
 
                         //Check CheiralityContraint
-                        if (checkCheiralityConstraint(new_cam_pose_idx, pt_idx) &&
-                            checkCheiralityConstraint(cam_idx, pt_idx)) {
+                        if(checkCheiralityConstraint(new_cam_pose_idx,pt_idx) && checkCheiralityConstraint(cam_idx,pt_idx)){
                             n_new_pts++;
                             pts_optim_iter_[pt_idx] = 1;
                             double *pt = pointBlockPtr(pt_idx);
-                            pt[0] = hpoints4D.at<double>(0) / hpoints4D.at<double>(3);
-                            pt[1] = hpoints4D.at<double>(1) / hpoints4D.at<double>(3);
-                            pt[2] = hpoints4D.at<double>(2) / hpoints4D.at<double>(3);
+                            pt[0] = hpoints4D.at<double>(0)/hpoints4D.at<double>(3);
+                            pt[1] = hpoints4D.at<double>(1)/hpoints4D.at<double>(3);
+                            pt[2] = hpoints4D.at<double>(2)/hpoints4D.at<double>(3);
                         }
-
-
                         /////////////////////////////////////////////////////////////////////////////////////////
 
                     }
@@ -794,9 +772,6 @@ bool BasicSfM::incrementalReconstruction(int seed_pair_idx0, int seed_pair_idx1)
         //  if( <bad reconstruction> )
         //    return false;
 
-
-
-
         /////////////////////////////////////////////////////////////////////////////////////////
     }
 
@@ -845,23 +820,16 @@ void BasicSfM::bundleAdjustmentIter(int new_cam_idx) {
                 // The camera position blocks have size (camera_block_size_) of 6 elements,
                 // while the point position blocks have size (point_block_size_) of 3 elements.
                 /////////////////////////////////////////////////////////////////////////////////////////
-                // LORENZO LAMBERTINI 2104288
-                //////////////////////////////////////////////////////////////////////////////////////////
-
-                // Initialization of loss function
-                ceres::CauchyLoss *loss = new ceres::CauchyLoss(2 * max_reproj_err_);
 
                 // Creating variables for better understanding
                 double* cameras = parameters_.data() + (cam_pose_index_[i_obs] * camera_block_size_);
                 double* points = parameters_.data() + (camera_block_size_ * num_cam_poses_) + (point_index_[i_obs] * point_block_size_);
-
+                double* observations=observations_.data()+(i_obs*2);
                 // Initialization of cost function
-                ceres::CostFunction *cost_function = ReprojectionError::Create(
-                        observations_[2 * i_obs + 0], observations_[2 * i_obs + 1]);
+                ceres::CostFunction *cost_function = ReprojectionError::Create(observations[0],observations[1]);
 
                 // Adding residual block
-                problem.AddResidualBlock(cost_function, loss, cameras, points ) ;
-
+                problem.AddResidualBlock(cost_function, new ceres::CauchyLoss(2 * max_reproj_err_), cameras, points ) ;
                 /////////////////////////////////////////////////////////////////////////////////////////
 
             }
